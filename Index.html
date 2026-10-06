@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iPhone SE 16:9 Viewer</title>
+
+    <!-- PWA: iOS向けアイコン設定 (SVGをBase64で埋め込み) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0id2hpdGUiLz48cGF0aCBkPSJNMjU2IDYwIEMyMzAgNjAgMjEwIDEwMCAyMTAgMTUwIEMyMDAgMTgwIDIxMCAyMDAgMjEwIDIyMCBMMjEwIDM0MCBDMjEwIDM2MCAyMzAgMzgwIDI1NiAzODAgQzI4MiAzODAgMzAyIDM2MCAzMDIgMzQwIEwyMDIgMjIwIEMzMDIgMjAwIDMyMCAxODAgMzIxIDE1MCBDMzMyIDEwMCAyOTAgNjAgMjU2IDYwIFoiIGZpbGw9IiMwMDBhNGY3Ii8+PHRleHQgeD0iMjU2IiB5PSI0NjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwMGE0ZjciIGZvbnQtd2VpZ2h0PSJib2xkIj5W RVNT RUwgPC90ZXh0Pjwvc3ZnPg==">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- PWA: Android/Chrome向けマニフェスト (Data URIで埋め込み) -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"iPhone SE Viewer","short_name":"SE Viewer","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0id2hpdGUiLz48cGF0aCBkPSJNMjU2IDYwIEMyMzAgNjAgMjEwIDEwMCAyMTAgMTUwIEMyMDAgMTgwIDIxMCAyMDAgMjEwIDIyMCBMMjEwIDM0MCBDMjEwIDM2MCAyMzAgMzgwIDI1NiAzODAgQzI4MiAzODAgMzAyIDM2MCAzMDIgMzQwIEwyMDIgMjIwIEMzMDIgMjAwIDMyMCAxODAgMzIxIDE1MCBDMzMyIDEwMCAyOTAgNjAgMjU2IDYwIFoiIGZpbGw9IiMwMDBhNGY3Ii8+PHRleHQgeD0iMjU2IiB5PSI0NjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwMGE0ZjciIGZvbnQtd2VpZ2h0PSJib2xkIj5W RVNT RUwgPC90ZXh0Pjwvc3ZnPg==","sizes":"512x512","type":"image/svg+xml"}]}'>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 90%;
+            text-align: center;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        .controls:hover {
+            opacity: 1;
+        }
+        input[type="file"] {
+            font-size: 12px;
+            color: white;
+        }
+
+        .screen-container {
+            width: 100vw;
+            aspect-ratio: 16 / 9;
+            background-color: #fff;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        @media (orientation: portrait) {
+            .screen-container {
+                width: 100vw; 
+                max-height: 56.25vw;
+            }
+        }
+
+        #viewer {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .placeholder-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #999;
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".html">
+    </div>
+
+    <div class="screen-container">
+        <div id="placeholder" class="placeholder-text">HTMLファイルを選択してください</div>
+        <iframe id="viewer"></iframe>
+    </div>
+
+    <script>
+        // --- PWA Service Worker (インライン実装) ---
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => {})));
+            `;
+            const blob = new Blob([swCode], { type: 'text/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl).catch(err => console.log('SW failed', err));
+        }
+
+        // --- メイン機能 ---
+        const fileInput = document.getElementById('fileInput');
+        const viewer = document.getElementById('viewer');
+        const placeholder = document.getElementById('placeholder');
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const htmlContent = event.target.result;
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                
+                viewer.src = url;
+                placeholder.style.display = 'none';
+            };
+            reader.readAsText(file);
+        });
+    </script>
+</body>
+</html>
